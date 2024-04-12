@@ -32,9 +32,9 @@ vector<long> sieve(long n) {
   return primes;
 }
 
-ZZ temp;  // Preallocate temporary object for intermediate
-
 bool checkCondition(const ZZ& a, const ZZ& b, const ZZ& p) {
+  ZZ temp;  // Preallocate temporary object for intermediate
+
   ZZ p6 = power(p, 6);
   ZZ value(0);  // Initialize value to 0 to avoid garbage accumulation
                 // calculations
@@ -51,42 +51,39 @@ bool checkCondition(const ZZ& a, const ZZ& b, const ZZ& p) {
   return IsZero(value);
 }
 
-void findRootsAndCheck(ZZ p) {
-  ZZ_p::init(p);  // Set modulus for ZZ_p operations
-
-  for (ZZ a = ZZ(1); a < p; a++) {
-    // Optimizing arithmetic operations to use temporary objects
-    // efficiently
-    ZZ rhs = MulMod(-3, SqrMod(a, p), p);  // RHS = -3*a^2 mod p
-
-    ZZ b_squared;
-    SqrRootMod(b_squared, rhs, p);
-    // Directly check conditions without additional temporary
-    // variables
-    if (checkCondition(a, b_squared, p)) {
-      cout << "a: " << a << ", b: " << b_squared << ", p: " << p
-           << "\n";
-      exit(0);
-    }
-    ZZ b2 = p - b_squared;
-    if (b_squared != b2 && checkCondition(a, b2, p)) {
-      cout << "a: " << a << ", b: " << b2 << ", p: " << p << "\n";
-      exit(0);
-    }
-  }
-}
-
 int main() {
   auto primes = sieve(N);
 
-  #pragma omp parallel for
-  for (auto it = primes.begin(); it != primes.end(); it++) {
-    findRootsAndCheck(to_ZZ(*it));
-    // Print the prime
-    // cout << *it << "\n";
-    // If you want that the primes are printed right away, uncomment the
-    // line below instead. Note that it would slow down the program though
-    // cout << *it << endl;
+#pragma omp parallel for simd
+  for (int i = 0; i < primes.size(); i++) {
+    auto p0 = primes[i];
+    ZZ p = ZZ(p0);
+    ZZ_p::init(p);  // Set modulus for ZZ_p operations
+
+#pragma omp simd
+    for (int a0 = 1; a0 < p0; a0++) {
+      ZZ a = ZZ(a0);
+      // Optimizing arithmetic operations to use temporary objects
+      // efficiently
+      ZZ rhs = MulMod(-3, SqrMod(a, p), p);  // RHS = -3*a^2 mod p
+
+      ZZ b_squared;
+      SqrRootMod(b_squared, rhs, p);
+      // Directly check conditions without additional temporary
+      // variables
+      if (checkCondition(a, b_squared, p)) {
+        cout << "a: " << a << ", b: " << b_squared << ", p: " << p
+             << "\n";
+        exit(0);
+      }
+      ZZ b2 = p - b_squared;
+      if (b_squared != b2 && checkCondition(a, b2, p)) {
+        cout << "a: " << a << ", b: " << b2 << ", p: " << p << "\n";
+        exit(0);
+      }
+
+      cout << p0 << "\n";
+    }
   }
 
   return 0;
